@@ -30,7 +30,7 @@ const createTenant = async (req, res) => {
                     name,
                     phone,
                     address,
-                    ...(roomId && roomId.trim() !== '' ? { roomId } : {}), // Only include roomId if it's provided and not empty
+                    roomId, // Optional: Link to a room if provided
                 },
             });
 
@@ -95,7 +95,7 @@ const updateTenant = async (req, res) => {
                 name,
                 phone,
                 address,
-                ...(roomId && roomId.trim() !== '' ? { roomId } : { roomId: null }), // Only include roomId if it's provided and not empty, otherwise set to null
+                roomId,
                 isActive
             }
         });

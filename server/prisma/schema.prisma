@@ -68,8 +68,8 @@ model TenantProfile {
 
 model Payment {
   id          String        @id @default(uuid())
-  tenantId    String?
-  tenant      TenantProfile? @relation(fields: [tenantId], references: [id])
+  tenantId    String
+  tenant      TenantProfile @relation(fields: [tenantId], references: [id])
   amount      Float
   date        DateTime      @default(now())
   monthFor    String        // e.g., "October 2023"
