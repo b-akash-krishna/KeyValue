@@ -294,8 +294,8 @@ export default function AdminDashboard() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex-1 flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${activeTab === tab.id
-                                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                                        : 'bg-transparent text-gray-600 hover:bg-gray-50'
+                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
+                                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
                                     }`}
                             >
                                 <tab.icon className="w-5 h-5" />
@@ -385,8 +385,8 @@ export default function AdminDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${complaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
-                                                                complaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                                    'bg-green-100 text-green-800'
+                                                            complaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                                'bg-green-100 text-green-800'
                                                             }`}>
                                                             {complaint.status.replace('_', ' ')}
                                                         </span>
