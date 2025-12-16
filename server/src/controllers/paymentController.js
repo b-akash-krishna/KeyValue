@@ -35,9 +35,14 @@ const recordPayment = async (req, res) => {
 
     // Admin flow
     try {
+        // Validation: If type is RENT, tenantId is required
+        if ((!type || type === 'RENT') && !tenantId) {
+            return res.status(400).json({ message: 'Tenant ID is required for Rent payments' });
+        }
+
         const payment = await prisma.payment.create({
             data: {
-                tenantId,
+                tenantId: tenantId || null,
                 amount: parseFloat(amount),
                 monthFor,
                 type: type || 'RENT',

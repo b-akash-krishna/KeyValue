@@ -85,18 +85,8 @@ export default function AdminDashboard() {
     const handleAddExpense = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            if (tenants.length === 0) {
-                const res = await api.get('/tenants');
-                if (res.data.length === 0) {
-                    alert("Need at least one tenant to record expense (MVP limitation)");
-                    return;
-                }
-                setTenants(res.data);
-            }
-            const dummyTenantId = tenants[0]?.id;
-
             await api.post('/payments', {
-                tenantId: dummyTenantId,
+                tenantId: null,
                 amount: newExpense.amount,
                 monthFor: newExpense.monthFor,
                 type: 'EXPENSE',
@@ -454,8 +444,8 @@ export default function AdminDashboard() {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{complaint.tenant?.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${complaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
-                                                            complaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                                'bg-green-100 text-green-800'
+                                                        complaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-green-100 text-green-800'
                                                         }`}>
                                                         {complaint.status}
                                                     </span>

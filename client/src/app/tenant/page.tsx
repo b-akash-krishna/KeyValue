@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { Home, DollarSign, AlertCircle, LogOut, Bell, Upload, CheckCircle, Clock, FileText, User, Phone, Mail, MapPin, Calendar } from 'lucide-react';
 
 export default function TenantDashboard() {
     const { user, isLoading, logout } = useAuth();
@@ -13,7 +14,6 @@ export default function TenantDashboard() {
     const [complaints, setComplaints] = useState([]);
     const [notifications, setNotifications] = useState<any[]>([]);
 
-    // Forms
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMonth, setPaymentMonth] = useState('');
     const [complaintTitle, setComplaintTitle] = useState('');
@@ -80,45 +80,69 @@ export default function TenantDashboard() {
         alert("ID Proof upload simulated. In production, this would upload to S3.");
     };
 
-    if (isLoading || !user) return <div>Loading...</div>;
+    if (isLoading || !user) return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+    );
+
+    const pendingPayments = payments.filter((p: any) => p.status === 'PENDING').length;
+    const verifiedPayments = payments.filter((p: any) => p.status === 'VERIFIED').length;
+    const openComplaints = complaints.filter((c: any) => c.status === 'OPEN').length;
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <nav className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            {/* Enhanced Navigation */}
+            <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
-                        <div className="flex items-center">
-                            <h1 className="text-2xl font-bold text-gray-900">Tenant Dashboard</h1>
+                        <div className="flex items-center space-x-4">
+                            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-2 rounded-lg">
+                                <Home className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900">Tenant Dashboard</h1>
+                                <p className="text-xs text-gray-500">Manage your stay</p>
+                            </div>
                         </div>
                         <div className="flex items-center space-x-4">
-                            <span className="text-sm text-gray-600">Hello, <span className="font-medium text-gray-900">{user.name}</span></span>
-                            <button onClick={logout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
-                                Logout
+                            <div className="hidden md:block text-right">
+                                <span className="text-sm text-gray-600">Welcome,</span>
+                                <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                            </div>
+                            <button 
+                                onClick={logout} 
+                                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span>Logout</span>
                             </button>
                         </div>
                     </div>
                 </div>
             </nav>
 
-            <div className="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
-                {/* Notifications Section */}
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                {/* Notifications Banner */}
                 {notifications.length > 0 && (
-                    <div className="mb-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 p-5 rounded-r-lg shadow-sm">
+                    <div className="mb-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 rounded-r-lg shadow-md p-6 animate-pulse-slow">
                         <div className="flex">
                             <div className="flex-shrink-0">
-                                <svg className="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
+                                <Bell className="h-6 w-6 text-yellow-500" />
                             </div>
-                            <div className="ml-3 flex-1">
-                                <h3 className="text-base font-semibold text-yellow-800 mb-2">
-                                    Notifications
+                            <div className="ml-4 flex-1">
+                                <h3 className="text-lg font-bold text-yellow-900 mb-3">
+                                    Important Notifications ({notifications.length})
                                 </h3>
-                                <div className="text-sm text-yellow-700 space-y-2">
+                                <div className="space-y-3">
                                     {notifications.map((notif: any) => (
-                                        <div key={notif.id} className="flex items-start">
-                                            <span className="flex-1">{notif.message}</span>
-                                            <span className="text-xs text-yellow-600 ml-2 whitespace-nowrap">{new Date(notif.createdAt).toLocaleDateString()}</span>
+                                        <div key={notif.id} className="flex items-start bg-white rounded-lg p-3 shadow-sm">
+                                            <div className="flex-1">
+                                                <p className="text-sm text-gray-800">{notif.message}</p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {new Date(notif.createdAt).toLocaleString()}
+                                                </p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -127,110 +151,292 @@ export default function TenantDashboard() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Stats Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500 hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Verified Payments</p>
+                                <p className="text-3xl font-bold text-green-600">{verifiedPayments}</p>
+                            </div>
+                            <div className="bg-green-100 p-3 rounded-full">
+                                <CheckCircle className="w-6 h-6 text-green-600" />
+                            </div>
+                        </div>
+                    </div>
 
+                    <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500 hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Pending Payments</p>
+                                <p className="text-3xl font-bold text-yellow-600">{pendingPayments}</p>
+                            </div>
+                            <div className="bg-yellow-100 p-3 rounded-full">
+                                <Clock className="w-6 h-6 text-yellow-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-500 hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 mb-1">Open Complaints</p>
+                                <p className="text-3xl font-bold text-red-600">{openComplaints}</p>
+                            </div>
+                            <div className="bg-red-100 p-3 rounded-full">
+                                <AlertCircle className="w-6 h-6 text-red-600" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Profile Card */}
-                    <div className="bg-white shadow rounded-lg p-6">
-                        <h2 className="text-lg font-medium mb-4">My Profile</h2>
-                        <p><strong>Name:</strong> {profile?.name || user.name}</p>
-                        <p><strong>Email:</strong> {user.email}</p>
-                        <p><strong>Phone:</strong> {profile?.phone || 'N/A'}</p>
-                        <p><strong>Address:</strong> {profile?.address || 'N/A'}</p>
-
-                        <div className="mt-4 border-t pt-4">
-                            <h3 className="font-medium text-gray-700">Room Details</h3>
-                            {profile?.room ? (
-                                <div className="mt-2">
-                                    <p><strong>Room Number:</strong> {profile.room.number}</p>
-                                    <p><strong>Rent Amount:</strong> {profile.room.rentAmount}</p>
+                    <div className="lg:col-span-1">
+                        <div className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+                            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-8 text-center">
+                                <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-full mb-4 shadow-lg">
+                                    <User className="w-12 h-12 text-blue-600" />
                                 </div>
-                            ) : (
-                                <p className="text-gray-500 mt-2">No room assigned yet.</p>
-                            )}
-                        </div>
+                                <h2 className="text-2xl font-bold text-white">{profile?.name || user.name}</h2>
+                                <p className="text-blue-100 text-sm mt-1">Tenant</p>
+                            </div>
+                            
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-start space-x-3">
+                                    <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Email</p>
+                                        <p className="text-sm text-gray-900 truncate">{user.email}</p>
+                                    </div>
+                                </div>
 
-                        <div className="mt-4 border-t pt-4">
-                            <h3 className="font-medium text-gray-700">ID Proof</h3>
-                            {profile?.idProofUrl ? (
-                                <p className="text-green-600 mt-2">Uploaded</p>
-                            ) : (
-                                <button onClick={handleIdProofUpload} className="mt-2 text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100">
-                                    Upload ID Proof
+                                <div className="flex items-start space-x-3">
+                                    <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Phone</p>
+                                        <p className="text-sm text-gray-900">{profile?.phone || 'N/A'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start space-x-3">
+                                    <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Address</p>
+                                        <p className="text-sm text-gray-900">{profile?.address || 'N/A'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4 mt-4">
+                                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                        <Home className="w-4 h-4 mr-2" />
+                                        Room Details
+                                    </h3>
+                                    {profile?.room ? (
+                                        <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Room Number</span>
+                                                <span className="text-sm font-semibold text-gray-900">{profile.room.number}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-600">Monthly Rent</span>
+                                                <span className="text-sm font-semibold text-green-600">${profile.room.rentAmount}</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">No room assigned yet</p>
+                                    )}
+                                </div>
+
+                                <div className="border-t pt-4 mt-4">
+                                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                        <FileText className="w-4 h-4 mr-2" />
+                                        ID Proof
+                                    </h3>
+                                    {profile?.idProofUrl ? (
+                                        <div className="flex items-center space-x-2 bg-green-50 rounded-lg p-3">
+                                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                            <span className="text-sm font-medium text-green-700">Verified</span>
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            onClick={handleIdProofUpload} 
+                                            className="w-full flex items-center justify-center space-x-2 bg-blue-50 text-blue-600 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+                                        >
+                                            <Upload className="w-4 h-4" />
+                                            <span>Upload ID Proof</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actions & History */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Payment Form */}
+                        <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
+                            <div className="flex items-center space-x-3 mb-6">
+                                <div className="bg-green-100 p-2 rounded-lg">
+                                    <DollarSign className="w-6 h-6 text-green-600" />
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">Record Payment</h2>
+                            </div>
+                            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                                            <input 
+                                                type="number" 
+                                                value={paymentAmount} 
+                                                onChange={e => setPaymentAmount(e.target.value)} 
+                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50" 
+                                                placeholder="0.00" 
+                                                required 
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Month For</label>
+                                        <input 
+                                            type="text" 
+                                            value={paymentMonth} 
+                                            onChange={e => setPaymentMonth(e.target.value)} 
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50" 
+                                            placeholder="e.g., December 2024" 
+                                            required 
+                                        />
+                                    </div>
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold shadow-md hover:shadow-lg"
+                                >
+                                    Submit Payment
                                 </button>
-                            )}
+                            </form>
+                        </div>
+
+                        {/* Complaint Form */}
+                        <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
+                            <div className="flex items-center space-x-3 mb-6">
+                                <div className="bg-red-100 p-2 rounded-lg">
+                                    <AlertCircle className="w-6 h-6 text-red-600" />
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">Raise Complaint</h2>
+                            </div>
+                            <form onSubmit={handleComplaintSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
+                                    <input 
+                                        type="text" 
+                                        value={complaintTitle} 
+                                        onChange={e => setComplaintTitle(e.target.value)} 
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50" 
+                                        placeholder="Brief description of issue" 
+                                        required 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                                    <select 
+                                        value={complaintCategory} 
+                                        onChange={e => setComplaintCategory(e.target.value)} 
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50 cursor-pointer"
+                                    >
+                                        <option value="PLUMBING">Plumbing</option>
+                                        <option value="ELECTRICAL">Electrical</option>
+                                        <option value="WIFI">WiFi</option>
+                                        <option value="CLEANING">Cleaning</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                                    <textarea 
+                                        value={complaintDesc} 
+                                        onChange={e => setComplaintDesc(e.target.value)} 
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50 min-h-[100px]" 
+                                        placeholder="Provide detailed information about the issue" 
+                                        required 
+                                    />
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white py-3 rounded-lg hover:from-red-700 hover:to-pink-700 transition-all font-semibold shadow-md hover:shadow-lg"
+                                >
+                                    Raise Complaint
+                                </button>
+                            </form>
+                        </div>
+
+                        {/* Recent Activity */}
+                        <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-100">
+                            <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Payments History */}
+                                <div>
+                                    <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
+                                        <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                                        Payment History
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {payments.length === 0 ? (
+                                            <p className="text-sm text-gray-500 text-center py-4">No payments yet</p>
+                                        ) : (
+                                            payments.slice(0, 5).map((p: any) => (
+                                                <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-medium text-gray-900">{p.monthFor}</p>
+                                                        <p className="text-xs text-gray-500">${p.amount}</p>
+                                                    </div>
+                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                        p.status === 'VERIFIED' ? 'bg-green-100 text-green-800' : 
+                                                        p.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+                                                        'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {p.status}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Complaints History */}
+                                <div>
+                                    <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
+                                        <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
+                                        My Complaints
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {complaints.length === 0 ? (
+                                            <p className="text-sm text-gray-500 text-center py-4">No complaints yet</p>
+                                        ) : (
+                                            complaints.slice(0, 5).map((c: any) => (
+                                                <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-gray-900 truncate">{c.title}</p>
+                                                        <p className="text-xs text-gray-500">{c.category}</p>
+                                                    </div>
+                                                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                                                        c.status === 'RESOLVED' ? 'bg-green-100 text-green-800' :
+                                                        c.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {c.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    {/* Payment Form */}
-                    <div className="bg-white shadow rounded-lg p-6">
-                        <h2 className="text-lg font-medium mb-4">Record Payment</h2>
-                        <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Amount</label>
-                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Month For</label>
-                                <input type="text" value={paymentMonth} onChange={e => setPaymentMonth(e.target.value)} className="mt-1 block w-full border p-2 rounded" placeholder="e.g. October 2023" required />
-                            </div>
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded">Submit Payment</button>
-                        </form>
-                    </div>
-
-                    {/* Complaint Form */}
-                    <div className="bg-white shadow rounded-lg p-6">
-                        <h2 className="text-lg font-medium mb-4">Raise Complaint</h2>
-                        <form onSubmit={handleComplaintSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Title</label>
-                                <input type="text" value={complaintTitle} onChange={e => setComplaintTitle(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Category</label>
-                                <select value={complaintCategory} onChange={e => setComplaintCategory(e.target.value)} className="mt-1 block w-full border p-2 rounded">
-                                    <option value="PLUMBING">Plumbing</option>
-                                    <option value="ELECTRICAL">Electrical</option>
-                                    <option value="WIFI">Wifi</option>
-                                    <option value="OTHER">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Description</label>
-                                <textarea value={complaintDesc} onChange={e => setComplaintDesc(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
-                            </div>
-                            <button type="submit" className="w-full bg-red-600 text-white py-2 rounded">Raise Complaint</button>
-                        </form>
-                    </div>
-
-                    {/* History Lists */}
-                    <div className="bg-white shadow rounded-lg p-6 md:col-span-2">
-                        <h2 className="text-lg font-medium mb-4">Recent Activity</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <h3 className="font-medium text-gray-500 mb-2">Payments</h3>
-                                <ul className="divide-y divide-gray-200">
-                                    {payments.map((p: any) => (
-                                        <li key={p.id} className="py-2 flex justify-between">
-                                            <span>{p.monthFor}</span>
-                                            <span className={p.status === 'VERIFIED' ? 'text-green-600' : 'text-yellow-600'}>{p.status}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-gray-500 mb-2">Complaints</h3>
-                                <ul className="divide-y divide-gray-200">
-                                    {complaints.map((c: any) => (
-                                        <li key={c.id} className="py-2 flex justify-between">
-                                            <span>{c.title}</span>
-                                            <span className="text-sm text-gray-500">{c.status}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </div>
