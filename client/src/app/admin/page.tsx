@@ -146,13 +146,17 @@ export default function AdminDashboard() {
     const handleUpdateTenant = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // We need an update endpoint. For MVP, we might not have one yet.
-            // Let's assume PUT /tenants/:id exists or we need to create it.
-            // Wait, we didn't create PUT /tenants/:id yet.
-            // Let's just alert for now or quickly add it.
-            // Actually, let's add the endpoint in backend next.
-            alert("Update Tenant functionality requires backend support (Coming soon)");
+            if (!editingTenant) return;
+            await api.put(`/tenants/${editingTenant.id}`, {
+                name: newTenant.name,
+                phone: newTenant.phone,
+                address: newTenant.address,
+                roomId: newTenant.roomId
+            });
             setIsEditTenantModalOpen(false);
+            setEditingTenant(null);
+            fetchData();
+            alert('Tenant updated successfully');
         } catch (error) {
             alert('Error updating tenant');
         }
