@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TENANT
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(TENANT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantProfile TenantProfile?
+}
+
+model Room {
+  id              String          @id @default(uuid())
+  number          String          @unique
+  capacity        Int
+  currentOccupancy Int            @default(0)
+  rentAmount      Float
+  tenants         TenantProfile[]
+}
+
+model TenantProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  phone       String
+  address     String?
+  idProofUrl  String?
+  joiningDate DateTime @default(now())
+  isActive    Boolean  @default(true)
+  
+  roomId      String?
+  room        Room?    @relation(fields: [roomId], references: [id])
+
+  payments    Payment[]
+  complaints  Complaint[]
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  tenantId    String
+  tenant      TenantProfile @relation(fields: [tenantId], references: [id])
+  amount      Float
+  date        DateTime      @default(now())
+  monthFor    String        // e.g., "October 2023"
+  type        String        @default("RENT") // RENT, UTILITY, etc.
+  status      PaymentStatus @default(PENDING)
+  proofUrl    String?
+  createdAt   DateTime      @default(now())
+}
+
+model Complaint {
+  id          String          @id @default(uuid())
+  tenantId    String
+  tenant      TenantProfile   @relation(fields: [tenantId], references: [id])
+  title       String
+  description String
+  category    String          // e.g., PLUMBING, ELECTRICAL, WIFI
+  status      ComplaintStatus @default(OPEN)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
