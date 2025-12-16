@@ -11,6 +11,7 @@ export default function TenantDashboard() {
     const [profile, setProfile] = useState<any>(null);
     const [payments, setPayments] = useState([]);
     const [complaints, setComplaints] = useState([]);
+    const [notifications, setNotifications] = useState<any[]>([]);
 
     // Forms
     const [paymentAmount, setPaymentAmount] = useState('');
@@ -41,6 +42,9 @@ export default function TenantDashboard() {
 
             const complaintsRes = await api.get('/complaints');
             setComplaints(complaintsRes.data);
+
+            const notificationsRes = await api.get('/notifications');
+            setNotifications(notificationsRes.data);
         } catch (error) {
             console.error(error);
         }
