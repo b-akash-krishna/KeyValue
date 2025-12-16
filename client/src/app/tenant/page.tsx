@@ -83,42 +83,44 @@ export default function TenantDashboard() {
     if (isLoading || !user) return <div>Loading...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="bg-white shadow-sm">
+        <div className="min-h-screen bg-gray-50">
+            <nav className="bg-white border-b border-gray-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
-                            <h1 className="text-xl font-bold text-gray-800">Tenant Dashboard</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">Tenant Dashboard</h1>
                         </div>
-                        <div className="flex items-center">
-                            <span className="mr-4 text-gray-600">Hello, {user.name}</span>
-                            <button onClick={logout} className="text-red-600 hover:text-red-800">Logout</button>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-600">Hello, <span className="font-medium text-gray-900">{user.name}</span></span>
+                            <button onClick={logout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors">
+                                Logout
+                            </button>
                         </div>
                     </div>
                 </div>
             </nav>
 
-            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
                 {/* Notifications Section */}
                 {notifications.length > 0 && (
-                    <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="mb-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-400 p-5 rounded-r-lg shadow-sm">
                         <div className="flex">
                             <div className="flex-shrink-0">
-                                {/* Icon */}
-                                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <svg className="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
                             </div>
-                            <div className="ml-3">
-                                <h3 className="text-sm leading-5 font-medium text-yellow-800">
+                            <div className="ml-3 flex-1">
+                                <h3 className="text-base font-semibold text-yellow-800 mb-2">
                                     Notifications
                                 </h3>
-                                <div className="mt-2 text-sm leading-5 text-yellow-700">
-                                    <ul className="list-disc pl-5 space-y-1">
-                                        {notifications.map((notif: any) => (
-                                            <li key={notif.id}>{notif.message} <span className="text-xs text-gray-500">({new Date(notif.createdAt).toLocaleDateString()})</span></li>
-                                        ))}
-                                    </ul>
+                                <div className="text-sm text-yellow-700 space-y-2">
+                                    {notifications.map((notif: any) => (
+                                        <div key={notif.id} className="flex items-start">
+                                            <span className="flex-1">{notif.message}</span>
+                                            <span className="text-xs text-yellow-600 ml-2 whitespace-nowrap">{new Date(notif.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
