@@ -94,110 +94,138 @@ export default function TenantDashboard() {
                 </div>
             </nav>
 
-            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* Profile Card */}
-                <div className="bg-white shadow rounded-lg p-6">
-                    <h2 className="text-lg font-medium mb-4">My Profile</h2>
-                    <p><strong>Name:</strong> {profile?.name || user.name}</p>
-                    <p><strong>Email:</strong> {user.email}</p>
-                    <p><strong>Phone:</strong> {profile?.phone || 'N/A'}</p>
-                    <p><strong>Address:</strong> {profile?.address || 'N/A'}</p>
-
-                    <div className="mt-4 border-t pt-4">
-                        <h3 className="font-medium text-gray-700">Room Details</h3>
-                        {profile?.room ? (
-                            <div className="mt-2">
-                                <p><strong>Room Number:</strong> {profile.room.number}</p>
-                                <p><strong>Rent Amount:</strong> {profile.room.rentAmount}</p>
+            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                {/* Notifications Section */}
+                {notifications.length > 0 && (
+                    <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                {/* Icon */}
+                                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
                             </div>
-                        ) : (
-                            <p className="text-gray-500 mt-2">No room assigned yet.</p>
-                        )}
-                    </div>
-
-                    <div className="mt-4 border-t pt-4">
-                        <h3 className="font-medium text-gray-700">ID Proof</h3>
-                        {profile?.idProofUrl ? (
-                            <p className="text-green-600 mt-2">Uploaded</p>
-                        ) : (
-                            <button onClick={handleIdProofUpload} className="mt-2 text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100">
-                                Upload ID Proof
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Payment Form */}
-                <div className="bg-white shadow rounded-lg p-6">
-                    <h2 className="text-lg font-medium mb-4">Record Payment</h2>
-                    <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount</label>
-                            <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Month For</label>
-                            <input type="text" value={paymentMonth} onChange={e => setPaymentMonth(e.target.value)} className="mt-1 block w-full border p-2 rounded" placeholder="e.g. October 2023" required />
-                        </div>
-                        <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded">Submit Payment</button>
-                    </form>
-                </div>
-
-                {/* Complaint Form */}
-                <div className="bg-white shadow rounded-lg p-6">
-                    <h2 className="text-lg font-medium mb-4">Raise Complaint</h2>
-                    <form onSubmit={handleComplaintSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Title</label>
-                            <input type="text" value={complaintTitle} onChange={e => setComplaintTitle(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Category</label>
-                            <select value={complaintCategory} onChange={e => setComplaintCategory(e.target.value)} className="mt-1 block w-full border p-2 rounded">
-                                <option value="PLUMBING">Plumbing</option>
-                                <option value="ELECTRICAL">Electrical</option>
-                                <option value="WIFI">Wifi</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Description</label>
-                            <textarea value={complaintDesc} onChange={e => setComplaintDesc(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
-                        </div>
-                        <button type="submit" className="w-full bg-red-600 text-white py-2 rounded">Raise Complaint</button>
-                    </form>
-                </div>
-
-                {/* History Lists */}
-                <div className="bg-white shadow rounded-lg p-6 md:col-span-2">
-                    <h2 className="text-lg font-medium mb-4">Recent Activity</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <h3 className="font-medium text-gray-500 mb-2">Payments</h3>
-                            <ul className="divide-y divide-gray-200">
-                                {payments.map((p: any) => (
-                                    <li key={p.id} className="py-2 flex justify-between">
-                                        <span>{p.monthFor}</span>
-                                        <span className={p.status === 'VERIFIED' ? 'text-green-600' : 'text-yellow-600'}>{p.status}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="font-medium text-gray-500 mb-2">Complaints</h3>
-                            <ul className="divide-y divide-gray-200">
-                                {complaints.map((c: any) => (
-                                    <li key={c.id} className="py-2 flex justify-between">
-                                        <span>{c.title}</span>
-                                        <span className="text-sm text-gray-500">{c.status}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="ml-3">
+                                <h3 className="text-sm leading-5 font-medium text-yellow-800">
+                                    Notifications
+                                </h3>
+                                <div className="mt-2 text-sm leading-5 text-yellow-700">
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        {notifications.map((notif: any) => (
+                                            <li key={notif.id}>{notif.message} <span className="text-xs text-gray-500">({new Date(notif.createdAt).toLocaleDateString()})</span></li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    {/* Profile Card */}
+                    <div className="bg-white shadow rounded-lg p-6">
+                        <h2 className="text-lg font-medium mb-4">My Profile</h2>
+                        <p><strong>Name:</strong> {profile?.name || user.name}</p>
+                        <p><strong>Email:</strong> {user.email}</p>
+                        <p><strong>Phone:</strong> {profile?.phone || 'N/A'}</p>
+                        <p><strong>Address:</strong> {profile?.address || 'N/A'}</p>
+
+                        <div className="mt-4 border-t pt-4">
+                            <h3 className="font-medium text-gray-700">Room Details</h3>
+                            {profile?.room ? (
+                                <div className="mt-2">
+                                    <p><strong>Room Number:</strong> {profile.room.number}</p>
+                                    <p><strong>Rent Amount:</strong> {profile.room.rentAmount}</p>
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 mt-2">No room assigned yet.</p>
+                            )}
+                        </div>
+
+                        <div className="mt-4 border-t pt-4">
+                            <h3 className="font-medium text-gray-700">ID Proof</h3>
+                            {profile?.idProofUrl ? (
+                                <p className="text-green-600 mt-2">Uploaded</p>
+                            ) : (
+                                <button onClick={handleIdProofUpload} className="mt-2 text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100">
+                                    Upload ID Proof
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Payment Form */}
+                    <div className="bg-white shadow rounded-lg p-6">
+                        <h2 className="text-lg font-medium mb-4">Record Payment</h2>
+                        <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Amount</label>
+                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Month For</label>
+                                <input type="text" value={paymentMonth} onChange={e => setPaymentMonth(e.target.value)} className="mt-1 block w-full border p-2 rounded" placeholder="e.g. October 2023" required />
+                            </div>
+                            <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded">Submit Payment</button>
+                        </form>
+                    </div>
+
+                    {/* Complaint Form */}
+                    <div className="bg-white shadow rounded-lg p-6">
+                        <h2 className="text-lg font-medium mb-4">Raise Complaint</h2>
+                        <form onSubmit={handleComplaintSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Title</label>
+                                <input type="text" value={complaintTitle} onChange={e => setComplaintTitle(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Category</label>
+                                <select value={complaintCategory} onChange={e => setComplaintCategory(e.target.value)} className="mt-1 block w-full border p-2 rounded">
+                                    <option value="PLUMBING">Plumbing</option>
+                                    <option value="ELECTRICAL">Electrical</option>
+                                    <option value="WIFI">Wifi</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Description</label>
+                                <textarea value={complaintDesc} onChange={e => setComplaintDesc(e.target.value)} className="mt-1 block w-full border p-2 rounded" required />
+                            </div>
+                            <button type="submit" className="w-full bg-red-600 text-white py-2 rounded">Raise Complaint</button>
+                        </form>
+                    </div>
+
+                    {/* History Lists */}
+                    <div className="bg-white shadow rounded-lg p-6 md:col-span-2">
+                        <h2 className="text-lg font-medium mb-4">Recent Activity</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 className="font-medium text-gray-500 mb-2">Payments</h3>
+                                <ul className="divide-y divide-gray-200">
+                                    {payments.map((p: any) => (
+                                        <li key={p.id} className="py-2 flex justify-between">
+                                            <span>{p.monthFor}</span>
+                                            <span className={p.status === 'VERIFIED' ? 'text-green-600' : 'text-yellow-600'}>{p.status}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-gray-500 mb-2">Complaints</h3>
+                                <ul className="divide-y divide-gray-200">
+                                    {complaints.map((c: any) => (
+                                        <li key={c.id} className="py-2 flex justify-between">
+                                            <span>{c.title}</span>
+                                            <span className="text-sm text-gray-500">{c.status}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     );

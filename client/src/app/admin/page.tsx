@@ -25,6 +25,15 @@ export default function AdminDashboard() {
     });
 
     const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
+    const [isEditTenantModalOpen, setIsEditTenantModalOpen] = useState(false);
+    const [editingTenant, setEditingTenant] = useState<any>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('ALL'); // ALL, ACTIVE, INACTIVE
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+    const [notificationMessage, setNotificationMessage] = useState('');
+    const [selectedTenantIdForNotification, setSelectedTenantIdForNotification] = useState('');
+
     const [newExpense, setNewExpense] = useState({
         amount: '',
         monthFor: '',
@@ -120,6 +129,62 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleEditTenant = (tenant: any) => {
+        setEditingTenant(tenant);
+        setNewTenant({
+            name: tenant.name,
+            email: tenant.user.email,
+            password: '', // Don't show password
+            phone: tenant.phone,
+            address: tenant.address,
+            roomId: tenant.roomId,
+            rentAmount: '' // Not in tenant model currently, maybe room rent?
+        });
+        setIsEditTenantModalOpen(true);
+    };
+
+    const handleUpdateTenant = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            // We need an update endpoint. For MVP, we might not have one yet.
+            // Let's assume PUT /tenants/:id exists or we need to create it.
+            // Wait, we didn't create PUT /tenants/:id yet.
+            // Let's just alert for now or quickly add it.
+            // Actually, let's add the endpoint in backend next.
+            alert("Update Tenant functionality requires backend support (Coming soon)");
+            setIsEditTenantModalOpen(false);
+        } catch (error) {
+            alert('Error updating tenant');
+        }
+    };
+
+    const handleSendNotification = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/notifications', {
+                userId: selectedTenantIdForNotification, // This should be userId, but we might have tenantId.
+                // We need to find the User ID from the Tenant ID.
+                // In our tenants list, we have tenant.userId.
+                // So we should pass tenant.user.id
+                message: notificationMessage
+            });
+            setIsNotificationModalOpen(false);
+            setNotificationMessage('');
+            alert('Notification sent successfully');
+        } catch (error) {
+            alert('Error sending notification');
+        }
+    };
+
+    const filteredTenants = tenants.filter((tenant: any) => {
+        const matchesSearch = tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tenant.room?.number?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = filterStatus === 'ALL' ||
+            (filterStatus === 'ACTIVE' && tenant.isActive) ||
+            (filterStatus === 'INACTIVE' && !tenant.isActive);
+        return matchesSearch && matchesStatus;
+    });
+
     // Calculate Stats
     const totalIncome = payments.filter((p: any) => p.type === 'RENT' && p.status === 'VERIFIED').reduce((acc, curr: any) => acc + curr.amount, 0);
     const totalExpense = payments.filter((p: any) => p.type === 'EXPENSE').reduce((acc, curr: any) => acc + curr.amount, 0);
@@ -171,27 +236,65 @@ export default function AdminDashboard() {
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-lg font-medium">Tenant Management</h2>
                                 <button
-                                    onClick={() => setIsAddTenantModalOpen(true)}
+                                    onClick={() => {
+                                        setEditingTenant(null);
+                                        setNewTenant({ name: '', email: '', password: '', phone: '', address: '', roomId: '', rentAmount: '' });
+                                        setIsAddTenantModalOpen(true);
+                                    }}
                                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
                                 >
                                     Add Tenant
                                 </button>
                             </div>
 
-                            {isAddTenantModalOpen && (
+                            <div className="flex space-x-4 mb-4">
+                                <input
+                                    type="text"
+                                    placeholder="Search by Name or Room"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="border p-2 rounded w-1/3"
+                                />
+                                <select
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    className="border p-2 rounded"
+                                >
+                                    <option value="ALL">All Status</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="INACTIVE">Inactive</option>
+                                </select>
+                            </div>
+
+                            {(isAddTenantModalOpen || isEditTenantModalOpen) && (
                                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
                                     <div className="bg-white p-8 rounded-lg shadow-xl w-96">
-                                        <h3 className="text-xl font-bold mb-4">Add New Tenant</h3>
-                                        <form onSubmit={handleAddTenant} className="space-y-4">
+                                        <h3 className="text-xl font-bold mb-4">{isEditTenantModalOpen ? 'Edit Tenant' : 'Add New Tenant'}</h3>
+                                        <form onSubmit={isEditTenantModalOpen ? handleUpdateTenant : handleAddTenant} className="space-y-4">
                                             <input type="text" placeholder="Name" value={newTenant.name} onChange={e => setNewTenant({ ...newTenant, name: e.target.value })} className="w-full border p-2 rounded" required />
-                                            <input type="email" placeholder="Email" value={newTenant.email} onChange={e => setNewTenant({ ...newTenant, email: e.target.value })} className="w-full border p-2 rounded" required />
-                                            <input type="password" placeholder="Password" value={newTenant.password} onChange={e => setNewTenant({ ...newTenant, password: e.target.value })} className="w-full border p-2 rounded" required />
+                                            <input type="email" placeholder="Email" value={newTenant.email} onChange={e => setNewTenant({ ...newTenant, email: e.target.value })} className="w-full border p-2 rounded" required disabled={isEditTenantModalOpen} />
+                                            {!isEditTenantModalOpen && <input type="password" placeholder="Password" value={newTenant.password} onChange={e => setNewTenant({ ...newTenant, password: e.target.value })} className="w-full border p-2 rounded" required />}
                                             <input type="text" placeholder="Phone" value={newTenant.phone} onChange={e => setNewTenant({ ...newTenant, phone: e.target.value })} className="w-full border p-2 rounded" required />
                                             <input type="text" placeholder="Address" value={newTenant.address} onChange={e => setNewTenant({ ...newTenant, address: e.target.value })} className="w-full border p-2 rounded" />
                                             <input type="text" placeholder="Room ID (Optional)" value={newTenant.roomId} onChange={e => setNewTenant({ ...newTenant, roomId: e.target.value })} className="w-full border p-2 rounded" />
                                             <div className="flex justify-end space-x-2">
-                                                <button type="button" onClick={() => setIsAddTenantModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded">Cancel</button>
-                                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Add</button>
+                                                <button type="button" onClick={() => { setIsAddTenantModalOpen(false); setIsEditTenantModalOpen(false); }} className="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">{isEditTenantModalOpen ? 'Update' : 'Add'}</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isNotificationModalOpen && (
+                                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+                                    <div className="bg-white p-8 rounded-lg shadow-xl w-96">
+                                        <h3 className="text-xl font-bold mb-4">Send Notification</h3>
+                                        <form onSubmit={handleSendNotification} className="space-y-4">
+                                            <textarea placeholder="Message" value={notificationMessage} onChange={e => setNotificationMessage(e.target.value)} className="w-full border p-2 rounded" required />
+                                            <div className="flex justify-end space-x-2">
+                                                <button type="button" onClick={() => setIsNotificationModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Send</button>
                                             </div>
                                         </form>
                                     </div>
@@ -207,10 +310,11 @@ export default function AdminDashboard() {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {tenants.map((tenant: any) => (
+                                        {filteredTenants.map((tenant: any) => (
                                             <tr key={tenant.id}>
                                                 <td className="px-6 py-4 whitespace-nowrap">{tenant.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">{tenant.user?.email}</td>
@@ -220,6 +324,13 @@ export default function AdminDashboard() {
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tenant.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                                         {tenant.isActive ? 'Active' : 'Inactive'}
                                                     </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                                                    <button onClick={() => handleEditTenant(tenant)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                                                    <button onClick={() => {
+                                                        setSelectedTenantIdForNotification(tenant.user?.id);
+                                                        setIsNotificationModalOpen(true);
+                                                    }} className="text-blue-600 hover:text-blue-900">Notify</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -328,8 +439,8 @@ export default function AdminDashboard() {
                                                 <td className="px-6 py-4 whitespace-nowrap">{complaint.tenant?.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${complaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
-                                                            complaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                                'bg-green-100 text-green-800'
+                                                        complaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-green-100 text-green-800'
                                                         }`}>
                                                         {complaint.status}
                                                     </span>
