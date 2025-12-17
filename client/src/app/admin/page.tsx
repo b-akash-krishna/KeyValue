@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { Users, DollarSign, AlertCircle, LogOut, Search, Filter, Plus, TrendingUp, TrendingDown, FileText } from 'lucide-react';
+import { Users, DollarSign, AlertCircle, LogOut, Search, Filter, Plus, TrendingUp, TrendingDown, FileText, Eye } from 'lucide-react';
 
 export default function AdminDashboard() {
     const { user, isLoading, logout } = useAuth();
@@ -44,6 +44,11 @@ export default function AdminDashboard() {
     const [isTenantDetailModalOpen, setIsTenantDetailModalOpen] = useState(false);
     const [selectedTenantDetail, setSelectedTenantDetail] = useState<any>(null);
     const [tenantPaymentSummary, setTenantPaymentSummary] = useState<any>(null);
+
+    // Complaint Modal State
+    const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
+    const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+    const [complaintKey, setComplaintKey] = useState(0); // Force re-render/fetch
 
     const [newExpense, setNewExpense] = useState({
         amount: '',
@@ -234,6 +239,28 @@ export default function AdminDashboard() {
         } catch (error) {
             console.error('Error fetching tenant details:', error);
             alert('Error loading tenant details');
+        }
+    };
+
+    const handleViewComplaint = (complaint: any) => {
+        setSelectedComplaint(complaint);
+        setIsComplaintModalOpen(true);
+    };
+
+    const handleAddComment = async (text: string) => {
+        if (!selectedComplaint) return;
+        try {
+            const res = await api.post(`/complaints/${selectedComplaint.id}/comments`, { text });
+            // Update local state to show new comment immediately
+            const newComment = res.data;
+            setSelectedComplaint((prev: any) => ({
+                ...prev,
+                comments: [...(prev.comments || []), newComment]
+            }));
+            fetchData(); // Refresh in background
+        } catch (error) {
+            console.error(error);
+            alert('Error adding comment');
         }
     };
 
@@ -698,7 +725,14 @@ export default function AdminDashboard() {
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                         {new Date(complaint.createdAt).toLocaleDateString()}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-6 py-4 whitespace-nowrap space-x-2 flex items-center">
+                                                        <button
+                                                            onClick={() => handleViewComplaint(complaint)}
+                                                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye className="w-5 h-5" />
+                                                        </button>
                                                         <select
                                                             value={complaint.status}
                                                             onChange={(e) => handleUpdateComplaintStatus(complaint.id, e.target.value)}
@@ -1042,6 +1076,125 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Complaint Detail Modal */}
+            {isComplaintModalOpen && selectedComplaint && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 rounded-t-2xl flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-1">Complaint Details</h3>
+                                <p className="text-purple-100 text-sm">#{selectedComplaint.id.slice(0, 8)}</p>
+                            </div>
+                            <button onClick={() => setIsComplaintModalOpen(false)} className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
+                                <LogOut className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1">
+                            {/* Status & Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Title</p>
+                                        <p className="text-lg font-bold text-gray-900">{selectedComplaint.title}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Category</p>
+                                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">{selectedComplaint.category}</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Tenant</p>
+                                        <p className="text-lg font-semibold text-gray-900">{selectedComplaint.tenant?.name}</p>
+                                        <p className="text-sm text-gray-500">Room {selectedComplaint.tenant?.room?.number || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Status</p>
+                                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${selectedComplaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
+                                            selectedComplaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-green-100 text-green-800'
+                                            }`}>
+                                            {selectedComplaint.status.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-8">
+                                <p className="text-sm text-gray-500 font-medium uppercase mb-2">Description</p>
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700">
+                                    {selectedComplaint.description}
+                                </div>
+                            </div>
+
+                            {selectedComplaint.photoUrl && (
+                                <div className="mb-8">
+                                    <p className="text-sm text-gray-500 font-medium uppercase mb-2">Attached Photo</p>
+                                    <div className="rounded-lg overflow-hidden border border-gray-200">
+                                        <img
+                                            src={`http://localhost:5000/${selectedComplaint.photoUrl}`}
+                                            alt="Complaint Proof"
+                                            className="w-full h-auto max-h-96 object-contain bg-gray-100"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Comments Section */}
+                            <div className="border-t border-gray-200 pt-6">
+                                <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                    <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+                                    Comments & Updates
+                                </h4>
+
+                                <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
+                                    {!selectedComplaint.comments || selectedComplaint.comments.length === 0 ? (
+                                        <p className="text-sm text-gray-500 italic">No comments yet.</p>
+                                    ) : (
+                                        selectedComplaint.comments.map((comment: any) => (
+                                            <div key={comment.id} className={`p-3 rounded-lg ${comment.user?.role === 'ADMIN' ? 'bg-indigo-50 ml-8 border border-indigo-100' : 'bg-gray-50 mr-8 border border-gray-200'}`}>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className={`text-xs font-bold ${comment.user?.role === 'ADMIN' ? 'text-indigo-700' : 'text-gray-700'}`}>
+                                                        {comment.user?.role === 'ADMIN' ? 'Admin' : 'Tenant'}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                </div>
+                                                <p className="text-sm text-gray-800">{comment.text}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Add a comment or update..."
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleAddComment(e.currentTarget.value);
+                                                e.currentTarget.value = '';
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={(e) => {
+                                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                            handleAddComment(input.value);
+                                            input.value = '';
+                                        }}
+                                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                    >
+                                        Send
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

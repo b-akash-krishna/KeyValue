@@ -483,6 +483,15 @@ export default function TenantDashboard() {
                                         required
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Photo (Optional)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        onChange={(e) => setComplaintPhoto(e.target.files?.[0] || null)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50 text-sm"
+                                    />
+                                </div>
                                 <button
                                     type="submit"
                                     className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white py-3 rounded-lg hover:from-red-700 hover:to-pink-700 transition-all font-semibold shadow-md hover:shadow-lg"

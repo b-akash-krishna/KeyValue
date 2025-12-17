@@ -37,6 +37,7 @@ model User {
 
   tenantProfile TenantProfile?
   notifications Notification[]
+  complaintComments ComplaintComment[]
 }
 
 model Room {
@@ -96,8 +97,20 @@ model Complaint {
   description String
   category    String          // e.g., PLUMBING, ELECTRICAL, WIFI
   status      ComplaintStatus @default(OPEN)
+  photoUrl    String?
+  comments    ComplaintComment[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+}
+
+model ComplaintComment {
+  id          String   @id @default(uuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  text        String
+  createdAt   DateTime @default(now())
 }
 
 model Notification {
