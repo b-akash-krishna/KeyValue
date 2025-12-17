@@ -21,6 +21,13 @@ export default function TenantDashboard() {
     const [complaintDesc, setComplaintDesc] = useState('');
     const [complaintCategory, setComplaintCategory] = useState('PLUMBING');
 
+    // Detail Modal States
+    const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+    const [selectedPayment, setSelectedPayment] = useState<any>(null);
+    const [newComment, setNewComment] = useState('');
+    const [complaintPhoto, setComplaintPhoto] = useState<File | null>(null);
+    const [paymentFile, setPaymentFile] = useState<File | null>(null);
+
     useEffect(() => {
         if (!isLoading && (!user || user.role !== 'TENANT')) {
             router.push('/login');
@@ -73,8 +80,6 @@ export default function TenantDashboard() {
         }
     }, [paymentMonth, profile]);
 
-    const [paymentFile, setPaymentFile] = useState<File | null>(null);
-
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -109,13 +114,27 @@ export default function TenantDashboard() {
 
     const handleComplaintSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('title', complaintTitle);
+        formData.append('description', complaintDesc);
+        formData.append('category', complaintCategory);
+        if (complaintPhoto) {
+            formData.append('photo', complaintPhoto);
+        }
+
         try {
-            await api.post('/complaints', { title: complaintTitle, description: complaintDesc, category: complaintCategory });
+            await api.post('/complaints', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             setComplaintTitle('');
             setComplaintDesc('');
+            setComplaintCategory('PLUMBING');
+            setComplaintPhoto(null);
             fetchData();
             alert('Complaint raised successfully');
         } catch (error) {
+            console.error(error);
             alert('Error raising complaint');
         }
     };
@@ -136,6 +155,31 @@ export default function TenantDashboard() {
         } catch (error) {
             console.error(error);
             alert('Error uploading ID Proof');
+        }
+    };
+
+    const handleViewComplaint = (complaint: any) => {
+        setSelectedComplaint(complaint);
+    };
+
+    const handleViewPayment = (payment: any) => {
+        setSelectedPayment(payment);
+    };
+
+    const handleAddComment = async () => {
+        if (!selectedComplaint || !newComment.trim()) return;
+        try {
+            const res = await api.post(`/complaints/${selectedComplaint.id}/comments`, { text: newComment });
+            // Update local state
+            setSelectedComplaint((prev: any) => ({
+                ...prev,
+                comments: [...(prev.comments || []), res.data]
+            }));
+            setNewComment('');
+            fetchData(); // Refresh in background
+        } catch (error) {
+            console.error(error);
+            alert('Error adding comment');
         }
     };
 
@@ -314,11 +358,17 @@ export default function TenantDashboard() {
                                         ID Proof
                                     </h3>
                                     {profile?.idProofUrl ? (
-                                        <div className="flex items-center space-x-2 bg-green-50 rounded-lg p-3">
-                                            <CheckCircle className="w-5 h-5 text-green-600" />
-                                            <a href={`http://localhost:5000/${profile.idProofUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-green-700 hover:underline">
-                                                Verified (View)
-                                            </a>
+                                        <div className={`flex items-center space-x-2 rounded-lg p-3 ${profile.idProofStatus === 'VERIFIED' ? 'bg-green-50' : 'bg-yellow-50'}`}>
+                                            {profile.idProofStatus === 'VERIFIED' ? (
+                                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                            ) : (
+                                                <Clock className="w-5 h-5 text-yellow-600" />
+                                            )}
+                                            <div className="flex-1">
+                                                <a href={`http://localhost:5000/${profile.idProofUrl}`} target="_blank" rel="noopener noreferrer" className={`text-sm font-medium hover:underline ${profile.idProofStatus === 'VERIFIED' ? 'text-green-700' : 'text-yellow-700'}`}>
+                                                    {profile.idProofStatus === 'VERIFIED' ? 'Verified' : 'Pending Verification'} (View)
+                                                </a>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div>
@@ -516,7 +566,7 @@ export default function TenantDashboard() {
                                             <p className="text-sm text-gray-500 text-center py-4">No payments yet</p>
                                         ) : (
                                             payments.slice(0, 5).map((p: any) => (
-                                                <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                <div key={p.id} onClick={() => handleViewPayment(p)} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
                                                     <div className="flex-1">
                                                         <p className="text-sm font-medium text-gray-900">{p.monthFor}</p>
                                                         <p className="text-xs text-gray-500">${p.amount}</p>
@@ -544,7 +594,7 @@ export default function TenantDashboard() {
                                             <p className="text-sm text-gray-500 text-center py-4">No complaints yet</p>
                                         ) : (
                                             complaints.slice(0, 5).map((c: any) => (
-                                                <div key={c.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                                <div key={c.id} onClick={() => handleViewComplaint(c)} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium text-gray-900 truncate">{c.title}</p>
                                                         <p className="text-xs text-gray-500">{c.category}</p>
@@ -565,6 +615,191 @@ export default function TenantDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Complaint Detail Modal */}
+            {selectedComplaint && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh]">
+                        <div className="bg-gradient-to-r from-red-600 to-pink-600 px-6 py-5 rounded-t-2xl flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-1">Complaint Details</h3>
+                                <p className="text-red-100 text-sm">#{selectedComplaint.id.slice(0, 8)}</p>
+                            </div>
+                            <button onClick={() => setSelectedComplaint(null)} className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
+                                <LogOut className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Title</p>
+                                        <p className="text-lg font-bold text-gray-900">{selectedComplaint.title}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Category</p>
+                                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">{selectedComplaint.category}</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Status</p>
+                                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${selectedComplaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
+                                            selectedComplaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-green-100 text-green-800'
+                                            }`}>
+                                            {selectedComplaint.status.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Submitted</p>
+                                        <p className="text-sm text-gray-900">{new Date(selectedComplaint.createdAt).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-8">
+                                <p className="text-sm text-gray-500 font-medium uppercase mb-2">Description</p>
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700">
+                                    {selectedComplaint.description}
+                                </div>
+                            </div>
+
+                            {selectedComplaint.photoUrl && (
+                                <div>
+                                    <p className="text-sm text-gray-500 font-medium mb-2">Attached Photo</p>
+                                    <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                                        <img
+                                            src={`http://localhost:5000/${selectedComplaint.photoUrl}`}
+                                            alt="Complaint Photo"
+                                            className="w-full h-auto max-h-96 object-contain"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="border-t border-gray-200 pt-6">
+                                <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                    <FileText className="w-5 h-5 mr-2 text-red-600" />
+                                    Comments & Updates
+                                </h4>
+
+                                <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
+                                    {!selectedComplaint.comments || selectedComplaint.comments.length === 0 ? (
+                                        <p className="text-sm text-gray-500 italic">No comments yet.</p>
+                                    ) : (
+                                        selectedComplaint.comments.map((comment: any) => (
+                                            <div key={comment.id} className={`p-3 rounded-lg ${comment.user?.role === 'ADMIN' ? 'bg-indigo-50 ml-8 border border-indigo-100' : 'bg-gray-50 mr-8 border border-gray-200'}`}>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className={`text-xs font-bold ${comment.user?.role === 'ADMIN' ? 'text-indigo-700' : 'text-gray-700'}`}>
+                                                        {comment.user?.role === 'ADMIN' ? 'Admin' : 'You'}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                </div>
+                                                <p className="text-sm text-gray-800">{comment.text}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Add a comment or update..."
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleAddComment();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={handleAddComment}
+                                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                                    >
+                                        Send
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Detail Modal */}
+            {selectedPayment && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5 rounded-t-2xl flex justify-between items-center">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-1">Payment Details</h3>
+                                <p className="text-green-100 text-sm">{selectedPayment.monthFor}</p>
+                            </div>
+                            <button onClick={() => setSelectedPayment(null)} className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
+                                <LogOut className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-blue-50 p-4 rounded-lg">
+                                    <p className="text-sm text-blue-600 font-medium mb-1">Amount Paid</p>
+                                    <p className="text-2xl font-bold text-blue-900">${selectedPayment.amount}</p>
+                                </div>
+                                <div className="bg-purple-50 p-4 rounded-lg">
+                                    <p className="text-sm text-purple-600 font-medium mb-1">Status</p>
+                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${selectedPayment.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                                        selectedPayment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-red-100 text-red-800'
+                                        }`}>
+                                        {selectedPayment.status}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {selectedPayment.totalRent && (
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm text-gray-600">Total Rent</span>
+                                        <span className="text-sm font-semibold text-gray-900">${selectedPayment.totalRent}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm text-gray-600">Paid</span>
+                                        <span className="text-sm font-semibold text-green-600">${selectedPayment.amount}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-gray-300">
+                                        <span className="text-sm font-bold text-gray-900">Balance</span>
+                                        <span className={`text-sm font-bold ${selectedPayment.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            ${selectedPayment.balance || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <p className="text-sm text-gray-500 font-medium mb-2">Payment Date</p>
+                                <p className="text-sm text-gray-900">{new Date(selectedPayment.date).toLocaleString()}</p>
+                            </div>
+
+                            {selectedPayment.proofUrl && (
+                                <div>
+                                    <p className="text-sm text-gray-500 font-medium mb-2">Payment Proof</p>
+                                    <div className="rounded-lg overflow-hidden border border-gray-200">
+                                        <img
+                                            src={`http://localhost:5000/${selectedPayment.proofUrl}`}
+                                            alt="Payment Proof"
+                                            className="w-full h-auto max-h-64 object-contain bg-gray-100"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

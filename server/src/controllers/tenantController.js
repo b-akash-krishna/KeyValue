@@ -233,4 +233,20 @@ const getIdProof = async (req, res) => {
     }
 };
 
-module.exports = { createTenant, getAllTenants, getTenantById, updateTenant, getMe, uploadIdProof, getIdProof };
+const verifyIdProof = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'VERIFIED' or 'REJECTED'
+
+    try {
+        const tenant = await prisma.tenantProfile.update({
+            where: { id },
+            data: { idProofStatus: status }
+        });
+        res.json({ message: 'ID Proof status updated', tenant });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+module.exports = { createTenant, getAllTenants, getTenantById, updateTenant, getMe, uploadIdProof, getIdProof, verifyIdProof };

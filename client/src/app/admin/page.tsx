@@ -1014,6 +1014,73 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
+                            {/* ID Proof Section */}
+                            {selectedTenantDetail.idProofUrl && (
+                                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">ID Proof Verification</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-2">Status</p>
+                                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${selectedTenantDetail.idProofStatus === 'VERIFIED'
+                                                ? 'bg-green-100 text-green-800'
+                                                : selectedTenantDetail.idProofStatus === 'REJECTED'
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                {selectedTenantDetail.idProofStatus || 'PENDING'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-2">Document</p>
+                                            <a
+                                                href={`http://localhost:5000/${selectedTenantDetail.idProofUrl}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-800 underline text-sm font-medium"
+                                            >
+                                                View ID Proof
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {selectedTenantDetail.idProofStatus !== 'VERIFIED' && (
+                                        <div className="mt-4 flex space-x-2">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await api.put(`/tenants/${selectedTenantDetail.id}/id-proof/verify`, { status: 'VERIFIED' });
+                                                        alert('ID Proof verified successfully');
+                                                        setSelectedTenantDetail({ ...selectedTenantDetail, idProofStatus: 'VERIFIED' });
+                                                        fetchData();
+                                                    } catch (error) {
+                                                        console.error(error);
+                                                        alert('Error verifying ID proof');
+                                                    }
+                                                }}
+                                                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                                            >
+                                                ✓ Verify
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await api.put(`/tenants/${selectedTenantDetail.id}/id-proof/verify`, { status: 'REJECTED' });
+                                                        alert('ID Proof rejected');
+                                                        setSelectedTenantDetail({ ...selectedTenantDetail, idProofStatus: 'REJECTED' });
+                                                        fetchData();
+                                                    } catch (error) {
+                                                        console.error(error);
+                                                        alert('Error rejecting ID proof');
+                                                    }
+                                                }}
+                                                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+                                            >
+                                                ✗ Reject
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Payment Summary */}
                             {tenantPaymentSummary && (
                                 <div>
@@ -1134,13 +1201,13 @@ export default function AdminDashboard() {
                             </div>
 
                             {selectedComplaint.photoUrl && (
-                                <div className="mb-8">
-                                    <p className="text-sm text-gray-500 font-medium uppercase mb-2">Attached Photo</p>
-                                    <div className="rounded-lg overflow-hidden border border-gray-200">
+                                <div>
+                                    <p className="text-sm text-gray-500 font-medium mb-2">Attached Photo</p>
+                                    <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                                         <img
                                             src={`http://localhost:5000/${selectedComplaint.photoUrl}`}
-                                            alt="Complaint Proof"
-                                            className="w-full h-auto max-h-96 object-contain bg-gray-100"
+                                            alt="Complaint Photo"
+                                            className="w-full h-auto max-h-96 object-contain"
                                         />
                                     </div>
                                 </div>

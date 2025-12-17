@@ -64,7 +64,8 @@ async function main() {
             phone: '9876543210',
             address: '123 Main St',
             roomId: rooms[0].id, // Room 101
-            joiningDate: new Date('2024-01-01')
+            joiningDate: new Date('2024-01-01'),
+            isActive: true
         }
     });
 
@@ -90,7 +91,8 @@ async function main() {
             phone: '8765432109',
             address: '456 Oak Ave',
             roomId: rooms[3].id, // Room 201
-            joiningDate: new Date('2024-02-15')
+            joiningDate: new Date('2024-02-15'),
+            isActive: true
         }
     });
 
