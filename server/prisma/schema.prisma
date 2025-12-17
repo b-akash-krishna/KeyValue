@@ -56,6 +56,7 @@ model TenantProfile {
   phone       String
   address     String?
   idProofUrl  String?
+  idProofStatus VerificationStatus @default(PENDING)
   joiningDate DateTime @default(now())
   isActive    Boolean  @default(true)
   
@@ -64,6 +65,12 @@ model TenantProfile {
 
   payments    Payment[]
   complaints  Complaint[]
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
 model Payment {
@@ -76,6 +83,8 @@ model Payment {
   type        String        @default("RENT") // RENT, UTILITY, etc.
   status      PaymentStatus @default(PENDING)
   proofUrl    String?
+  totalRent   Float?        // Total rent for the month
+  balance     Float?        // Remaining balance after this payment
   createdAt   DateTime      @default(now())
 }
 

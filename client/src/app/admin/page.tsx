@@ -4,15 +4,23 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { Users, DollarSign, AlertCircle, LogOut, Search, Filter, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, DollarSign, AlertCircle, LogOut, Search, Filter, Plus, TrendingUp, TrendingDown, FileText } from 'lucide-react';
 
 export default function AdminDashboard() {
     const { user, isLoading, logout } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('tenants');
     const [tenants, setTenants] = useState<any[]>([]);
+    const [rooms, setRooms] = useState<any[]>([]);
     const [payments, setPayments] = useState([]);
     const [complaints, setComplaints] = useState([]);
+    const [paymentStats, setPaymentStats] = useState<any>({
+        totalExpected: 0,
+        totalCollected: 0,
+        totalPending: 0,
+        completionRate: 0,
+        monthlyBreakdown: []
+    });
 
     const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
     const [newTenant, setNewTenant] = useState({
@@ -33,6 +41,9 @@ export default function AdminDashboard() {
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
     const [notificationMessage, setNotificationMessage] = useState('');
     const [selectedTenantIdForNotification, setSelectedTenantIdForNotification] = useState('');
+    const [isTenantDetailModalOpen, setIsTenantDetailModalOpen] = useState(false);
+    const [selectedTenantDetail, setSelectedTenantDetail] = useState<any>(null);
+    const [tenantPaymentSummary, setTenantPaymentSummary] = useState<any>(null);
 
     const [newExpense, setNewExpense] = useState({
         amount: '',
@@ -54,19 +65,70 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
         try {
-            if (activeTab === 'tenants') {
-                const res = await api.get('/tenants');
-                setTenants(res.data);
-            } else if (activeTab === 'payments') {
-                const res = await api.get('/payments');
-                setPayments(res.data);
-            } else if (activeTab === 'complaints') {
-                const res = await api.get('/complaints');
-                setComplaints(res.data);
-            }
+            const [tenantsRes, roomsRes, paymentsRes, complaintsRes] = await Promise.all([
+                api.get('/tenants'),
+                api.get('/rooms'),
+                api.get('/payments'),
+                api.get('/complaints')
+            ]);
+
+            setTenants(tenantsRes.data);
+            setRooms(roomsRes.data);
+            setPayments(paymentsRes.data);
+            setComplaints(complaintsRes.data);
+
+            // Calculate payment statistics
+            calculatePaymentStats(tenantsRes.data, paymentsRes.data);
         } catch (error) {
             console.error('Error fetching data', error);
         }
+    };
+
+    const calculatePaymentStats = (tenantsData: any[], paymentsData: any[]) => {
+        // Get current month
+        const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+        // Calculate total expected rent (all tenants with rooms)
+        const totalExpected = tenantsData.reduce((sum, tenant) => {
+            return sum + (tenant.room?.rentAmount || 0);
+        }, 0);
+
+        // Calculate total collected (verified payments for current month)
+        const currentMonthPayments = paymentsData.filter(p =>
+            p.monthFor === currentMonth && p.status === 'VERIFIED' && p.type === 'RENT'
+        );
+        const totalCollected = currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+
+        // Calculate pending
+        const totalPending = totalExpected - totalCollected;
+        const completionRate = totalExpected > 0 ? (totalCollected / totalExpected) * 100 : 0;
+
+        // Monthly breakdown (last 6 months)
+        const monthlyBreakdown = Array.from({ length: 6 }, (_, i) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const monthPayments = paymentsData.filter(p =>
+                p.monthFor === monthYear && p.status === 'VERIFIED' && p.type === 'RENT'
+            );
+            const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+
+            return {
+                month: monthYear,
+                expected: totalExpected,
+                collected,
+                pending: totalExpected - collected
+            };
+        });
+
+        setPaymentStats({
+            totalExpected,
+            totalCollected,
+            totalPending,
+            completionRate,
+            monthlyBreakdown
+        });
     };
 
     const handleAddTenant = async (e: React.FormEvent) => {
@@ -162,6 +224,19 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleViewTenantDetails = async (tenant: any) => {
+        try {
+            setSelectedTenantDetail(tenant);
+            // Fetch payment summary for this tenant
+            const summaryRes = await api.get(`/payments/summary/${tenant.id}`);
+            setTenantPaymentSummary(summaryRes.data);
+            setIsTenantDetailModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching tenant details:', error);
+            alert('Error loading tenant details');
+        }
+    };
+
     const handleSendNotification = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -214,6 +289,12 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                         <div className="flex items-center space-x-4">
+                            <button
+                                onClick={() => router.push('/admin/rooms')}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                                Rooms
+                            </button>
                             <div className="hidden md:block text-right">
                                 <span className="text-sm text-gray-600">Welcome back,</span>
                                 <p className="text-sm font-semibold text-gray-900">{user.name}</p>
@@ -357,6 +438,229 @@ export default function AdminDashboard() {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                                         <tr>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Name</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Email</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Room</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {filteredTenants.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                                    <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                                                    <p className="text-lg font-medium">No tenants found</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredTenants.map((tenant: any) => (
+                                                <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 h-10 w-10">
+                                                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg">
+                                                                    {tenant.name.charAt(0)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="ml-4">
+                                                                <div className="text-sm font-medium text-gray-900">{tenant.name}</div>
+                                                                <div className="text-sm text-gray-500">{tenant.phone}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                        {tenant.user?.email}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">{tenant.room?.number || 'Unassigned'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${tenant.isActive
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
+                                                            }`}>
+                                                            {tenant.isActive ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        <div className="flex space-x-3">
+                                                            <button
+                                                                onClick={() => handleViewTenantDetails(tenant)}
+                                                                className="text-blue-600 hover:text-blue-900 transition-colors"
+                                                                title="View Details"
+                                                            >
+                                                                <FileText className="w-5 h-5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleEditTenant(tenant)}
+                                                                className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                                                                title="Edit Tenant"
+                                                            >
+                                                                <Plus className="w-5 h-5 transform rotate-45" /> {/* Using Plus as pencil placeholder or edit icon */}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedTenantIdForNotification(tenant.userId);
+                                                                    setIsNotificationModalOpen(true);
+                                                                }}
+                                                                className="text-blue-600 hover:text-blue-900 transition-colors"
+                                                                title="Send Notification"
+                                                            >
+                                                                <AlertCircle className="w-5 h-5" />
+                                                            </button>
+                                                            {tenant.idProofUrl && (
+                                                                <a
+                                                                    href={`http://localhost:5000/${tenant.idProofUrl}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-green-600 hover:text-green-900 transition-colors"
+                                                                    title="View ID Proof"
+                                                                >
+                                                                    <FileText className="w-5 h-5" />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'payments' && (
+                        <div>
+                            {/* Header with Actions */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 space-y-4 sm:space-y-0">
+                                <h2 className="text-2xl font-bold text-gray-900">Financial Overview</h2>
+                                <button
+                                    onClick={() => setIsAddExpenseModalOpen(true)}
+                                    className="flex items-center space-x-2 bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    <span>Add Expense</span>
+                                </button>
+                            </div>
+
+                            {/* Financial Stats Details */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                                    <p className="text-green-800 font-semibold mb-2">Total Collected</p>
+                                    <p className="text-3xl font-bold text-green-600">${totalIncome}</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-6 border border-red-100">
+                                    <p className="text-red-800 font-semibold mb-2">Total Expenses</p>
+                                    <p className="text-3xl font-bold text-red-600">${totalExpense}</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-100">
+                                    <p className="text-indigo-800 font-semibold mb-2">Net Profit</p>
+                                    <p className="text-3xl font-bold text-indigo-600">${netProfit}</p>
+                                </div>
+                            </div>
+
+                            {/* Transactions Table */}
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tenant/Description</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Type</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Amount</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Month</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {payments.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                                    <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                                                    <p className="text-lg font-medium">No transactions recorded</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            payments.map((payment: any) => (
+                                                <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        {payment.type === 'RENT' ? payment.tenant?.name : (payment.description || 'Expense')}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${payment.type === 'RENT'
+                                                            ? 'bg-blue-100 text-blue-800'
+                                                            : 'bg-orange-100 text-orange-800'
+                                                            }`}>
+                                                            {payment.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                                        ${payment.amount}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                        {payment.monthFor}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${payment.status === 'VERIFIED'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : payment.status === 'REJECTED'
+                                                                ? 'bg-red-100 text-red-800'
+                                                                : 'bg-yellow-100 text-yellow-800'
+                                                            }`}>
+                                                            {payment.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                        {new Date(payment.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        <div className="flex space-x-3">
+                                                            {payment.proofUrl && (
+                                                                <a
+                                                                    href={`http://localhost:5000/${payment.proofUrl}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-blue-600 hover:text-blue-900 font-semibold flex items-center"
+                                                                    title="View Proof"
+                                                                >
+                                                                    <FileText className="w-4 h-4 mr-1" />
+                                                                    proof
+                                                                </a>
+                                                            )}
+                                                            {payment.status === 'PENDING' && (
+                                                                <button
+                                                                    onClick={() => handleVerifyPayment(payment.id)}
+                                                                    className="text-green-600 hover:text-green-900 font-semibold"
+                                                                >
+                                                                    Verify
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'complaints' && (
+                        <div>
+                            {/* Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
+                                <h2 className="text-2xl font-bold text-gray-900">Maintenance & Complaints</h2>
+                            </div>
+
+                            {/* Complaints Table */}
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                                        <tr>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Title</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tenant</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Category</th>
@@ -484,14 +788,19 @@ export default function AdminDashboard() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Room ID (Optional)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Room 101"
-                                    value={newTenant.roomId}
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Room Details (Optional)</label>
+                                <select
+                                    value={newTenant.roomId || ''}
                                     onChange={e => setNewTenant({ ...newTenant, roomId: e.target.value })}
-                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
-                                />
+                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 cursor-pointer"
+                                >
+                                    <option value="">No Room Assigned</option>
+                                    {rooms.map((room: any) => (
+                                        <option key={room.id} value={room.id}>
+                                            Room {room.number} (Occupancy: {room.currentOccupancy}/{room.capacity})
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
                                 <button
@@ -604,6 +913,140 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Tenant Detail Modal */}
+            {isTenantDetailModalOpen && selectedTenantDetail && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-xl">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold">{selectedTenantDetail.name}</h2>
+                                    <p className="text-blue-100 text-sm">{selectedTenantDetail.user?.email}</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setIsTenantDetailModalOpen(false);
+                                        setSelectedTenantDetail(null);
+                                        setTenantPaymentSummary(null);
+                                    }}
+                                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Tenant Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Contact</h3>
+                                    <p className="text-gray-900">{selectedTenantDetail.phone}</p>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Address</h3>
+                                    <p className="text-gray-900">{selectedTenantDetail.address}</p>
+                                </div>
+                            </div>
+
+                            {/* Room & Rent Info */}
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">Room Assignment</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Room Number</p>
+                                        <p className="text-xl font-bold text-blue-600">
+                                            {selectedTenantDetail.room?.number || 'Unassigned'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Monthly Rent</p>
+                                        <p className="text-xl font-bold text-green-600">
+                                            ${selectedTenantDetail.room?.rentAmount || 0}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Status</p>
+                                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${selectedTenantDetail.isActive
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
+                                            }`}>
+                                            {selectedTenantDetail.isActive ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Payment Summary */}
+                            {tenantPaymentSummary && (
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Payment History</h3>
+
+                                    {/* Current Month Summary */}
+                                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
+                                        <div className="grid grid-cols-3 gap-4 text-center">
+                                            <div>
+                                                <p className="text-sm text-gray-600">Total Rent</p>
+                                                <p className="text-xl font-bold text-gray-900">${tenantPaymentSummary.totalRent}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-600">Total Paid</p>
+                                                <p className="text-xl font-bold text-green-600">
+                                                    ${tenantPaymentSummary.summary?.reduce((sum: number, m: any) => sum + m.totalPaid, 0) || 0}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-600">Total Pending</p>
+                                                <p className="text-xl font-bold text-red-600">
+                                                    ${tenantPaymentSummary.summary?.reduce((sum: number, m: any) => sum + m.balance, 0) || 0}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Monthly Breakdown */}
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Month</th>
+                                                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Expected</th>
+                                                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Paid</th>
+                                                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Balance</th>
+                                                    <th className="px-4 py-2 text-center font-semibold text-gray-700">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {tenantPaymentSummary.summary?.map((month: any, idx: number) => (
+                                                    <tr key={idx} className="border-t border-gray-200 hover:bg-gray-50">
+                                                        <td className="px-4 py-3 font-medium text-gray-900">{month.monthFor}</td>
+                                                        <td className="px-4 py-3 text-right text-gray-700">${month.totalRent}</td>
+                                                        <td className="px-4 py-3 text-right text-green-600 font-semibold">${month.totalPaid}</td>
+                                                        <td className="px-4 py-3 text-right text-red-600 font-semibold">${month.balance}</td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            {month.balance === 0 ? (
+                                                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Paid</span>
+                                                            ) : month.totalPaid > 0 ? (
+                                                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">Partial</span>
+                                                            ) : (
+                                                                <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Unpaid</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
+
     );
 }

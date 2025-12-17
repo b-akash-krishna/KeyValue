@@ -1,6 +1,8 @@
 const express = require('express');
-const { createTenant, getAllTenants, getTenantById, updateTenant, getMe } = require('../controllers/tenantController');
+const { createTenant, getAllTenants, getTenantById, updateTenant, getMe, uploadIdProof, getIdProof } = require('../controllers/tenantController');
 const { authenticateToken, authorizeRole } = require('../middleware/authMiddleware');
+
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -13,6 +15,8 @@ router.get('/', authorizeRole(['ADMIN']), getAllTenants);
 
 // Tenant or Admin
 router.get('/me', authorizeRole(['TENANT', 'ADMIN']), getMe);
+router.post('/:id/id-proof', authorizeRole(['TENANT', 'ADMIN']), upload.single('idProof'), uploadIdProof);
+router.get('/:id/id-proof', authorizeRole(['TENANT', 'ADMIN']), getIdProof);
 
 // Admin only (or specific tenant logic, but keeping simple for now)
 router.get('/:id', authorizeRole(['ADMIN']), getTenantById);

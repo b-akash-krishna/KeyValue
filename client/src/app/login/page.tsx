@@ -122,7 +122,7 @@ export default function LoginPage() {
                         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                             <p className="text-xs font-semibold text-blue-900 mb-2">Demo Credentials:</p>
                             <div className="text-xs text-blue-700 space-y-1">
-                                <p><strong>Admin:</strong> admin@example.com / adminpassword</p>
+                                <p><strong>Admin:</strong> admin@keyvalue.com / admin123</p>
                             </div>
                         </div>
                     </div>

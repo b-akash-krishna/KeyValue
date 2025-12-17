@@ -16,6 +16,7 @@ export default function TenantDashboard() {
 
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMonth, setPaymentMonth] = useState('');
+    const [monthlyBalance, setMonthlyBalance] = useState<any>(null);
     const [complaintTitle, setComplaintTitle] = useState('');
     const [complaintDesc, setComplaintDesc] = useState('');
     const [complaintCategory, setComplaintCategory] = useState('PLUMBING');
@@ -45,20 +46,63 @@ export default function TenantDashboard() {
 
             const notificationsRes = await api.get('/notifications');
             setNotifications(notificationsRes.data);
+
+            // Fetch monthly balance if month is selected
+            if (paymentMonth && profileRes.data?.id) {
+                fetchMonthlyBalance(profileRes.data.id, paymentMonth);
+            }
         } catch (error) {
             console.error(error);
         }
     };
 
+    const fetchMonthlyBalance = async (tenantId: string, monthFor: string) => {
+        try {
+            const res = await api.get(`/payments/balance/${tenantId}/${monthFor}`);
+            setMonthlyBalance(res.data);
+        } catch (error) {
+            console.error('Error fetching balance:', error);
+            setMonthlyBalance(null);
+        }
+    };
+
+    // Fetch balance when month changes
+    useEffect(() => {
+        if (profile?.id && paymentMonth) {
+            fetchMonthlyBalance(profile.id, paymentMonth);
+        }
+    }, [paymentMonth, profile]);
+
+    const [paymentFile, setPaymentFile] = useState<File | null>(null);
+
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('/payments', { amount: paymentAmount, monthFor: paymentMonth });
+            // 1. Create Payment Record
+            const res = await api.post('/payments', {
+                amount: paymentAmount,
+                monthFor: paymentMonth
+            });
+
+            const paymentId = res.data.id;
+
+            // 2. Upload Proof if file selected
+            if (paymentFile) {
+                const formData = new FormData();
+                formData.append('proof', paymentFile);
+
+                await api.post(`/payments/${paymentId}/proof`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
             setPaymentAmount('');
             setPaymentMonth('');
+            setPaymentFile(null);
             fetchData();
             alert('Payment recorded successfully');
         } catch (error) {
+            console.error(error);
             alert('Error recording payment');
         }
     };
@@ -76,8 +120,23 @@ export default function TenantDashboard() {
         }
     };
 
-    const handleIdProofUpload = () => {
-        alert("ID Proof upload simulated. In production, this would upload to S3.");
+    const handleIdProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !profile?.id) return;
+
+        const formData = new FormData();
+        formData.append('idProof', file);
+
+        try {
+            await api.post(`/tenants/${profile.id}/id-proof`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            fetchData();
+            alert('ID Proof uploaded successfully');
+        } catch (error) {
+            console.error(error);
+            alert('Error uploading ID Proof');
+        }
     };
 
     if (isLoading || !user) return (
@@ -110,8 +169,8 @@ export default function TenantDashboard() {
                                 <span className="text-sm text-gray-600">Welcome,</span>
                                 <p className="text-sm font-semibold text-gray-900">{user.name}</p>
                             </div>
-                            <button 
-                                onClick={logout} 
+                            <button
+                                onClick={logout}
                                 className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
                             >
                                 <LogOut className="w-4 h-4" />
@@ -202,7 +261,7 @@ export default function TenantDashboard() {
                                 <h2 className="text-2xl font-bold text-white">{profile?.name || user.name}</h2>
                                 <p className="text-blue-100 text-sm mt-1">Tenant</p>
                             </div>
-                            
+
                             <div className="p-6 space-y-4">
                                 <div className="flex items-start space-x-3">
                                     <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -257,16 +316,27 @@ export default function TenantDashboard() {
                                     {profile?.idProofUrl ? (
                                         <div className="flex items-center space-x-2 bg-green-50 rounded-lg p-3">
                                             <CheckCircle className="w-5 h-5 text-green-600" />
-                                            <span className="text-sm font-medium text-green-700">Verified</span>
+                                            <a href={`http://localhost:5000/${profile.idProofUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-green-700 hover:underline">
+                                                Verified (View)
+                                            </a>
                                         </div>
                                     ) : (
-                                        <button 
-                                            onClick={handleIdProofUpload} 
-                                            className="w-full flex items-center justify-center space-x-2 bg-blue-50 text-blue-600 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-                                        >
-                                            <Upload className="w-4 h-4" />
-                                            <span>Upload ID Proof</span>
-                                        </button>
+                                        <div>
+                                            <input
+                                                type="file"
+                                                id="id-proof-upload"
+                                                accept="image/*,application/pdf"
+                                                className="hidden"
+                                                onChange={handleIdProofUpload}
+                                            />
+                                            <label
+                                                htmlFor="id-proof-upload"
+                                                className="w-full flex items-center justify-center space-x-2 bg-blue-50 text-blue-600 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors font-medium cursor-pointer"
+                                            >
+                                                <Upload className="w-4 h-4" />
+                                                <span>Upload ID Proof</span>
+                                            </label>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -283,36 +353,85 @@ export default function TenantDashboard() {
                                 </div>
                                 <h2 className="text-xl font-bold text-gray-900">Record Payment</h2>
                             </div>
+
+                            {/* Rent Information */}
+                            {profile?.room && (
+                                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-semibold text-blue-900">Monthly Rent:</span>
+                                        <span className="text-lg font-bold text-blue-600">${profile.room.rentAmount}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Monthly Balance Display */}
+                            {monthlyBalance && (
+                                <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-orange-200 rounded-lg">
+                                    <h3 className="text-sm font-bold text-orange-900 mb-2">Balance for {monthlyBalance.monthFor}</h3>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-700">Total Rent:</span>
+                                            <span className="font-semibold">${monthlyBalance.totalRent}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-700">Paid:</span>
+                                            <span className="font-semibold text-green-600">${monthlyBalance.totalPaid}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm pt-2 border-t border-orange-200">
+                                            <span className="text-gray-900 font-bold">Remaining:</span>
+                                            <span className={`font-bold ${monthlyBalance.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                ${monthlyBalance.balance}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <form onSubmit={handlePaymentSubmit} className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                                            <input 
-                                                type="number" 
-                                                value={paymentAmount} 
-                                                onChange={e => setPaymentAmount(e.target.value)} 
-                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50" 
-                                                placeholder="0.00" 
-                                                required 
+                                            <input
+                                                type="number"
+                                                value={paymentAmount}
+                                                onChange={e => setPaymentAmount(e.target.value)}
+                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                                                placeholder="0.00"
+                                                required
                                             />
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Month For</label>
-                                        <input 
-                                            type="text" 
-                                            value={paymentMonth} 
-                                            onChange={e => setPaymentMonth(e.target.value)} 
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50" 
-                                            placeholder="e.g., December 2024" 
-                                            required 
+                                        <select
+                                            value={paymentMonth}
+                                            onChange={e => setPaymentMonth(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                                            required
+                                        >
+                                            <option value="">Select Month</option>
+                                            {Array.from({ length: 12 }, (_, i) => {
+                                                const date = new Date();
+                                                date.setMonth(date.getMonth() - i);
+                                                const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                                                return <option key={i} value={monthYear}>{monthYear}</option>;
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Proof (Screenshot)</label>
+                                        <input
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-sm"
                                         />
                                     </div>
                                 </div>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold shadow-md hover:shadow-lg"
                                 >
                                     Submit Payment
@@ -331,20 +450,20 @@ export default function TenantDashboard() {
                             <form onSubmit={handleComplaintSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
-                                    <input 
-                                        type="text" 
-                                        value={complaintTitle} 
-                                        onChange={e => setComplaintTitle(e.target.value)} 
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50" 
-                                        placeholder="Brief description of issue" 
-                                        required 
+                                    <input
+                                        type="text"
+                                        value={complaintTitle}
+                                        onChange={e => setComplaintTitle(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50"
+                                        placeholder="Brief description of issue"
+                                        required
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                                    <select 
-                                        value={complaintCategory} 
-                                        onChange={e => setComplaintCategory(e.target.value)} 
+                                    <select
+                                        value={complaintCategory}
+                                        onChange={e => setComplaintCategory(e.target.value)}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50 cursor-pointer"
                                     >
                                         <option value="PLUMBING">Plumbing</option>
@@ -356,16 +475,16 @@ export default function TenantDashboard() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-                                    <textarea 
-                                        value={complaintDesc} 
-                                        onChange={e => setComplaintDesc(e.target.value)} 
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50 min-h-[100px]" 
-                                        placeholder="Provide detailed information about the issue" 
-                                        required 
+                                    <textarea
+                                        value={complaintDesc}
+                                        onChange={e => setComplaintDesc(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50 min-h-[100px]"
+                                        placeholder="Provide detailed information about the issue"
+                                        required
                                     />
                                 </div>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white py-3 rounded-lg hover:from-red-700 hover:to-pink-700 transition-all font-semibold shadow-md hover:shadow-lg"
                                 >
                                     Raise Complaint
@@ -393,11 +512,10 @@ export default function TenantDashboard() {
                                                         <p className="text-sm font-medium text-gray-900">{p.monthFor}</p>
                                                         <p className="text-xs text-gray-500">${p.amount}</p>
                                                     </div>
-                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                                        p.status === 'VERIFIED' ? 'bg-green-100 text-green-800' : 
-                                                        p.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
-                                                        'bg-red-100 text-red-800'
-                                                    }`}>
+                                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${p.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                                                        p.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-red-100 text-red-800'
+                                                        }`}>
                                                         {p.status}
                                                     </span>
                                                 </div>
@@ -422,11 +540,10 @@ export default function TenantDashboard() {
                                                         <p className="text-sm font-medium text-gray-900 truncate">{c.title}</p>
                                                         <p className="text-xs text-gray-500">{c.category}</p>
                                                     </div>
-                                                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
-                                                        c.status === 'RESOLVED' ? 'bg-green-100 text-green-800' :
+                                                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${c.status === 'RESOLVED' ? 'bg-green-100 text-green-800' :
                                                         c.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-red-100 text-red-800'
-                                                    }`}>
+                                                            'bg-red-100 text-red-800'
+                                                        }`}>
                                                         {c.status.replace('_', ' ')}
                                                     </span>
                                                 </div>
