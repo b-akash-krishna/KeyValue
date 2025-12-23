@@ -60,6 +60,8 @@ model TenantProfile {
   idProofStatus VerificationStatus @default(PENDING)
   joiningDate DateTime @default(now())
   isActive    Boolean  @default(true)
+  initialDeposit Float?
+  depositStatus DepositStatus @default(PENDING)
   
   roomId      String?
   room        Room?    @relation(fields: [roomId], references: [id])
@@ -72,6 +74,12 @@ enum VerificationStatus {
   PENDING
   VERIFIED
   REJECTED
+}
+
+enum DepositStatus {
+  PENDING
+  PAID
+  RETURNED
 }
 
 model Payment {

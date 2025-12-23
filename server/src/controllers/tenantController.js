@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 const createTenant = async (req, res) => {
-    const { email, password, name, phone, address, roomId, rentAmount } = req.body;
+    const { email, password, name, phone, address, roomId, rentAmount, initialDeposit } = req.body;
 
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -33,6 +33,8 @@ const createTenant = async (req, res) => {
                     phone,
                     address,
                     roomId: finalRoomId,
+                    initialDeposit: parseFloat(initialDeposit || 0),
+                    depositStatus: 'PENDING'
                 },
             });
 
@@ -102,7 +104,7 @@ const getTenantById = async (req, res) => {
 
 const updateTenant = async (req, res) => {
     const { id } = req.params;
-    const { name, phone, address, roomId, isActive } = req.body;
+    const { name, phone, address, roomId, isActive, initialDeposit, depositStatus } = req.body;
 
     try {
         // Get current tenant data
@@ -127,7 +129,9 @@ const updateTenant = async (req, res) => {
                     phone,
                     address,
                     roomId: newRoomId,
-                    isActive
+                    isActive,
+                    initialDeposit: initialDeposit ? parseFloat(initialDeposit) : undefined,
+                    depositStatus: depositStatus || undefined
                 }
             });
 

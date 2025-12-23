@@ -114,7 +114,7 @@ export default function TenantDashboard() {
 
     const handleComplaintSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const formData = new FormData();
         formData.append('title', complaintTitle);
         formData.append('description', complaintDesc);
@@ -350,6 +350,21 @@ export default function TenantDashboard() {
                                     ) : (
                                         <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">No room assigned yet</p>
                                     )}
+
+                                    <div className="border-t border-gray-100 pt-4 mt-2">
+                                        <div className="flex justify-between items-center bg-purple-50 p-3 rounded-lg">
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500">Initial Deposit</p>
+                                                <p className="text-sm font-bold text-gray-900">${profile?.initialDeposit || 0}</p>
+                                            </div>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${profile?.depositStatus === 'PAID' ? 'bg-green-100 text-green-700' :
+                                                    profile?.depositStatus === 'RETURNED' ? 'bg-gray-100 text-gray-700' :
+                                                        'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                {profile?.depositStatus || 'PENDING'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="border-t pt-4 mt-4">

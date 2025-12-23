@@ -30,7 +30,10 @@ export default function AdminDashboard() {
         phone: '',
         address: '',
         roomId: '',
-        rentAmount: ''
+        roomId: '',
+        rentAmount: '',
+        initialDeposit: '',
+        depositStatus: 'PENDING'
     });
 
     const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
@@ -44,6 +47,8 @@ export default function AdminDashboard() {
     const [isTenantDetailModalOpen, setIsTenantDetailModalOpen] = useState(false);
     const [selectedTenantDetail, setSelectedTenantDetail] = useState<any>(null);
     const [tenantPaymentSummary, setTenantPaymentSummary] = useState<any>(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedPaymentDetail, setSelectedPaymentDetail] = useState<any>(null);
 
     // Complaint Modal State
     const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
@@ -205,7 +210,10 @@ export default function AdminDashboard() {
             phone: tenant.phone,
             address: tenant.address,
             roomId: tenant.roomId,
-            rentAmount: ''
+            roomId: tenant.roomId,
+            rentAmount: '',
+            initialDeposit: tenant.initialDeposit || 0,
+            depositStatus: tenant.depositStatus || 'PENDING'
         });
         setIsEditTenantModalOpen(true);
     };
@@ -218,7 +226,10 @@ export default function AdminDashboard() {
                 name: newTenant.name,
                 phone: newTenant.phone,
                 address: newTenant.address,
-                roomId: newTenant.roomId
+                address: newTenant.address,
+                roomId: newTenant.roomId,
+                initialDeposit: newTenant.initialDeposit,
+                depositStatus: newTenant.depositStatus
             });
             setIsEditTenantModalOpen(false);
             setEditingTenant(null);
@@ -245,6 +256,11 @@ export default function AdminDashboard() {
     const handleViewComplaint = (complaint: any) => {
         setSelectedComplaint(complaint);
         setIsComplaintModalOpen(true);
+    };
+
+    const handleViewPayment = (payment: any) => {
+        setSelectedPaymentDetail(payment);
+        setIsPaymentModalOpen(true);
     };
 
     const handleAddComment = async (text: string) => {
@@ -424,7 +440,9 @@ export default function AdminDashboard() {
                                 <button
                                     onClick={() => {
                                         setEditingTenant(null);
-                                        setNewTenant({ name: '', email: '', password: '', phone: '', address: '', roomId: '', rentAmount: '' });
+                                        setEditingTenant(null);
+                                        setNewTenant({ name: '', email: '', password: '', phone: '', address: '', roomId: '', rentAmount: '', initialDeposit: '', depositStatus: 'PENDING' });
+                                        setIsAddTenantModalOpen(true);
                                         setIsAddTenantModalOpen(true);
                                     }}
                                     className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
@@ -836,6 +854,32 @@ export default function AdminDashboard() {
                                     ))}
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Initial Deposit</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                                    <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={newTenant.initialDeposit}
+                                        onChange={e => setNewTenant({ ...newTenant, initialDeposit: e.target.value })}
+                                        className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Deposit Status</label>
+                                <select
+                                    value={newTenant.depositStatus || 'PENDING'}
+                                    onChange={e => setNewTenant({ ...newTenant, depositStatus: e.target.value })}
+                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 cursor-pointer"
+                                >
+                                    <option value="PENDING">Pending</option>
+                                    <option value="PAID">Paid (Verified)</option>
+                                    <option value="RETURNED">Returned</option>
+                                </select>
+                            </div>
+
                             <div className="flex justify-end space-x-3 pt-4">
                                 <button
                                     type="button"
@@ -997,6 +1041,22 @@ export default function AdminDashboard() {
                                         </p>
                                     </div>
                                     <div>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Initial Deposit</p>
+                                        <div className="flex flex-col">
+                                            <p className="text-xl font-bold text-gray-900">
+                                                ${selectedTenantDetail.initialDeposit || 0}
+                                            </p>
+                                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold w-max ${selectedTenantDetail.depositStatus === 'PAID' ? 'bg-green-100 text-green-800' :
+                                                selectedTenantDetail.depositStatus === 'RETURNED' ? 'bg-gray-100 text-gray-800' :
+                                                    'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                {selectedTenantDetail.depositStatus || 'PENDING'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
                                         <p className="text-sm text-gray-600">Monthly Rent</p>
                                         <p className="text-xl font-bold text-green-600">
                                             ${selectedTenantDetail.room?.rentAmount || 0}
@@ -1141,132 +1201,265 @@ export default function AdminDashboard() {
                                             </tbody>
                                         </table>
                                     </div>
+                                    {/* Recent Transactions */}
+                                    <div className="mt-8">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Transactions</h3>
+                                        <div className="space-y-3">
+                                            {tenantPaymentSummary.summary?.flatMap((m: any) => m.payments)
+                                                .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                .map((payment: any) => (
+                                                    <div
+                                                        key={payment.id}
+                                                        onClick={() => handleViewPayment(payment)}
+                                                        className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-all shadow-sm hover:shadow-md"
+                                                    >
+                                                        <div className="flex items-center space-x-4">
+                                                            <div className={`p-2 rounded-full ${payment.status === 'VERIFIED' ? 'bg-green-100 text-green-600' :
+                                                                payment.status === 'REJECTED' ? 'bg-red-100 text-red-600' :
+                                                                    'bg-yellow-100 text-yellow-600'
+                                                                }`}>
+                                                                <DollarSign className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-gray-900">${payment.amount}</p>
+                                                                <p className="text-xs text-gray-500">{new Date(payment.date).toLocaleDateString()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-sm font-medium text-gray-900">{payment.monthFor}</p>
+                                                            <span className={`text-xs font-bold uppercase tracking-wide ${payment.status === 'VERIFIED' ? 'text-green-600' :
+                                                                payment.status === 'REJECTED' ? 'text-red-600' :
+                                                                    'text-yellow-600'
+                                                                }`}>
+                                                                {payment.status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            {(!tenantPaymentSummary.summary || tenantPaymentSummary.summary.length === 0) && (
+                                                <p className="text-gray-500 text-center py-4">No transactions found.</p>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
             {/* Complaint Detail Modal */}
-            {isComplaintModalOpen && selectedComplaint && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh]">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 rounded-t-2xl flex justify-between items-center shrink-0">
-                            <div>
-                                <h3 className="text-2xl font-bold text-white mb-1">Complaint Details</h3>
-                                <p className="text-purple-100 text-sm">#{selectedComplaint.id.slice(0, 8)}</p>
+            {
+                isComplaintModalOpen && selectedComplaint && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh]">
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 rounded-t-2xl flex justify-between items-center shrink-0">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-white mb-1">Complaint Details</h3>
+                                    <p className="text-purple-100 text-sm">#{selectedComplaint.id.slice(0, 8)}</p>
+                                </div>
+                                <button onClick={() => setIsComplaintModalOpen(false)} className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
+                                    <LogOut className="w-6 h-6" />
+                                </button>
                             </div>
-                            <button onClick={() => setIsComplaintModalOpen(false)} className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
-                                <LogOut className="w-6 h-6" />
-                            </button>
-                        </div>
 
-                        <div className="p-6 overflow-y-auto flex-1">
-                            {/* Status & Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <div className="space-y-4">
-                                    <div>
-                                        <p className="text-sm text-gray-500 font-medium uppercase">Title</p>
-                                        <p className="text-lg font-bold text-gray-900">{selectedComplaint.title}</p>
+                            <div className="p-6 overflow-y-auto flex-1">
+                                {/* Status & Info */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-sm text-gray-500 font-medium uppercase">Title</p>
+                                            <p className="text-lg font-bold text-gray-900">{selectedComplaint.title}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500 font-medium uppercase">Category</p>
+                                            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">{selectedComplaint.category}</span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500 font-medium uppercase">Category</p>
-                                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">{selectedComplaint.category}</span>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-sm text-gray-500 font-medium uppercase">Tenant</p>
+                                            <p className="text-lg font-semibold text-gray-900">{selectedComplaint.tenant?.name}</p>
+                                            <p className="text-sm text-gray-500">Room {selectedComplaint.tenant?.room?.number || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500 font-medium uppercase">Status</p>
+                                            <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${selectedComplaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
+                                                selectedComplaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                                                    'bg-green-100 text-green-800'
+                                                }`}>
+                                                {selectedComplaint.status.replace('_', ' ')}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div>
-                                        <p className="text-sm text-gray-500 font-medium uppercase">Tenant</p>
-                                        <p className="text-lg font-semibold text-gray-900">{selectedComplaint.tenant?.name}</p>
-                                        <p className="text-sm text-gray-500">Room {selectedComplaint.tenant?.room?.number || 'N/A'}</p>
+
+                                <div className="mb-8">
+                                    <p className="text-sm text-gray-500 font-medium uppercase mb-2">Description</p>
+                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700">
+                                        {selectedComplaint.description}
                                     </div>
+                                </div>
+
+                                {selectedComplaint.photoUrl && (
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium mb-2">Attached Photo</p>
+                                        <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                                            <img
+                                                src={`http://localhost:5000/${selectedComplaint.photoUrl}`}
+                                                alt="Complaint Photo"
+                                                className="w-full h-auto max-h-96 object-contain"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Comments Section */}
+                                <div className="border-t border-gray-200 pt-6">
+                                    <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                        <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+                                        Comments & Updates
+                                    </h4>
+
+                                    <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
+                                        {!selectedComplaint.comments || selectedComplaint.comments.length === 0 ? (
+                                            <p className="text-sm text-gray-500 italic">No comments yet.</p>
+                                        ) : (
+                                            selectedComplaint.comments.map((comment: any) => (
+                                                <div key={comment.id} className={`p-3 rounded-lg ${comment.user?.role === 'ADMIN' ? 'bg-indigo-50 ml-8 border border-indigo-100' : 'bg-gray-50 mr-8 border border-gray-200'}`}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className={`text-xs font-bold ${comment.user?.role === 'ADMIN' ? 'text-indigo-700' : 'text-gray-700'}`}>
+                                                            {comment.user?.role === 'ADMIN' ? 'Admin' : 'Tenant'}
+                                                        </span>
+                                                        <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-800">{comment.text}</p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    <div className="flex space-x-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Add a comment or update..."
+                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleAddComment(e.currentTarget.value);
+                                                    e.currentTarget.value = '';
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            onClick={(e) => {
+                                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                                handleAddComment(input.value);
+                                                input.value = '';
+                                            }}
+                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                        >
+                                            Send
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+            {/* Payment Detail Modal */}
+            {
+                isPaymentModalOpen && selectedPaymentDetail && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-center justify-center z-[60] p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform transition-all scale-100 opacity-100">
+                            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-white flex items-center">
+                                    <DollarSign className="w-6 h-6 mr-2" />
+                                    Payment Details
+                                </h3>
+                                <button
+                                    onClick={() => setIsPaymentModalOpen(false)}
+                                    className="text-white hover:bg-white/20 rounded-full p-1 transition-colors"
+                                >
+                                    <Users className="w-5 h-5 transform rotate-45" /> {/* Close icon */}
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Amount</p>
+                                        <p className="text-2xl font-bold text-emerald-600">${selectedPaymentDetail.amount}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">Date</p>
+                                        <p className="text-lg font-semibold text-gray-900">
+                                            {new Date(selectedPaymentDetail.date).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
                                     <div>
                                         <p className="text-sm text-gray-500 font-medium uppercase">Status</p>
-                                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${selectedComplaint.status === 'OPEN' ? 'bg-red-100 text-red-800' :
-                                            selectedComplaint.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                                                'bg-green-100 text-green-800'
+                                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${selectedPaymentDetail.status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                                            selectedPaymentDetail.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                'bg-yellow-100 text-yellow-800'
                                             }`}>
-                                            {selectedComplaint.status.replace('_', ' ')}
+                                            {selectedPaymentDetail.status}
                                         </span>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="mb-8">
-                                <p className="text-sm text-gray-500 font-medium uppercase mb-2">Description</p>
-                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-700">
-                                    {selectedComplaint.description}
-                                </div>
-                            </div>
-
-                            {selectedComplaint.photoUrl && (
-                                <div>
-                                    <p className="text-sm text-gray-500 font-medium mb-2">Attached Photo</p>
-                                    <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                                        <img
-                                            src={`http://localhost:5000/${selectedComplaint.photoUrl}`}
-                                            alt="Complaint Photo"
-                                            className="w-full h-auto max-h-96 object-contain"
-                                        />
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium uppercase">For Month</p>
+                                        <p className="text-lg font-semibold text-gray-900">{selectedPaymentDetail.monthFor}</p>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Comments Section */}
-                            <div className="border-t border-gray-200 pt-6">
-                                <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                                    <FileText className="w-5 h-5 mr-2 text-indigo-600" />
-                                    Comments & Updates
-                                </h4>
+                                {selectedPaymentDetail.proofUrl && (
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium mb-2">Attached Proof</p>
+                                        <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                                            <img
+                                                src={`http://localhost:5000/${selectedPaymentDetail.proofUrl}`}
+                                                alt="Payment Proof"
+                                                className="w-full h-auto max-h-96 object-contain"
+                                            />
+                                        </div>
+                                        <div className="mt-2 text-right">
+                                            <a
+                                                href={`http://localhost:5000/${selectedPaymentDetail.proofUrl}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                                            >
+                                                View Full Size
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
 
-                                <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
-                                    {!selectedComplaint.comments || selectedComplaint.comments.length === 0 ? (
-                                        <p className="text-sm text-gray-500 italic">No comments yet.</p>
-                                    ) : (
-                                        selectedComplaint.comments.map((comment: any) => (
-                                            <div key={comment.id} className={`p-3 rounded-lg ${comment.user?.role === 'ADMIN' ? 'bg-indigo-50 ml-8 border border-indigo-100' : 'bg-gray-50 mr-8 border border-gray-200'}`}>
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className={`text-xs font-bold ${comment.user?.role === 'ADMIN' ? 'text-indigo-700' : 'text-gray-700'}`}>
-                                                        {comment.user?.role === 'ADMIN' ? 'Admin' : 'Tenant'}
-                                                    </span>
-                                                    <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleString()}</span>
-                                                </div>
-                                                <p className="text-sm text-gray-800">{comment.text}</p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                {!selectedPaymentDetail.proofUrl && (
+                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-500 italic">
+                                        No proof attached
+                                    </div>
+                                )}
 
-                                <div className="flex space-x-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Add a comment or update..."
-                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                handleAddComment(e.currentTarget.value);
-                                                e.currentTarget.value = '';
-                                            }
-                                        }}
-                                    />
+                                <div className="pt-4 flex justify-end">
                                     <button
-                                        onClick={(e) => {
-                                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                            handleAddComment(input.value);
-                                            input.value = '';
-                                        }}
-                                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                        onClick={() => setIsPaymentModalOpen(false)}
+                                        className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                                     >
-                                        Send
+                                        Close
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
 
     );
 }
